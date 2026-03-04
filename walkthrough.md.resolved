@@ -1,0 +1,72 @@
+# FastAPI + Celery + MySQL Project Walkthrough
+
+## Summary of Accomplishments
+
+All requirements for the assignment have been successfully fulfilled. We have created a fully functional background processing system backed by FastAPI, MySQL, and Redis.
+
+### 1. Database & Models
+- Replaced SQLite with a robust `pymysql` MySQL connection using SQLAlchemy ([app/database.py](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/database.py)).
+- Designed the [NewsArticle](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/models.py#5-21) schema ([app/models.py](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/models.py)) with proper indexing on `published_date`, `title`, and `url` to optimize searches by date.
+- Dynamically created the `news_db` database and automatically generated tables upon running FastAPI.
+
+### 2. FastAPI Endpoints & Timing Middleware
+- Built the `GET /news` API endpoint ([app/main.py](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/main.py)) which searches the database by `published_date`.
+- Created custom [add_process_time_header](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/main.py#23-68) middleware that intercepts the HTTP response, reconstructs the json body stream, and successfully injects ` total_time_taken ` into the final JSON payload.
+
+### 3. Celery & Periodic Tasks
+- Integrated Celery ([app/worker.py](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/worker.py)) using your local Redis server on Windows (WSL) as the message broker.
+- Used `requests` to fetch Top Headlines from News API ([app/services/news_api.py](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/services/news_api.py)).
+- Registered a Celery Beat crontab task (`fetch-news-every-minute`) that schedules the fetch automation.
+
+### 4. Logging & Error Handling
+- Provided a centralized custom logger component ([app/logger.py](file:///C:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/app/logger.py)) that outputs clean INFO, WARNING, and ERROR logs across FastAPI threads and background Celery processes.
+- Handled empty API keys, network request timeouts, exception rollbacks in MySQL transactions, and malformed database reads with appropriate HTTP 500 exceptions and logging mechanisms.
+
+---
+
+## Validation & Results
+
+The complete system has been verified locally.
+
+**1. Celery Fetching Test:**
+- **Action**: Ran the Celery worker and Celery beat process.
+- **Result**: The worker connected to Redis and successfully received the scheduled task. We confirmed the insertion transaction in the log: `[INFO] Successfully stored 19 new articles.`
+
+**2. API Responses and Timing Middleware Test:**
+- **Action**: Queried `http://127.0.0.1:8000/news?date=2026-03-03`
+- **Result**: 
+  ```json
+  {
+      "data": [
+          {
+              "title": "Dow drops 1,200 points - CNBC live updates",
+              "url": "https://www.cnbc.com...",
+              "published_at": "2026-03-03T18:00:00Z"
+          },
+          ... 18 more items
+      ],
+      "total_time_taken": 8.83
+  }
+  ```
+  The endpoint successfully fetched data from MySQL while measuring a processing time around `8.8ms`.
+
+---
+
+## How to Run It Yourself
+
+Currently, the server processes are running in the background. If you ever need to stop and restart them manually, open 3 different PowerShell windows and activate your virtual environment ([.\venv\Scripts\Activate](file:///c:/Users/Pratham%20Shetty/Desktop/Jarvis_Invest_Assignment/venv/Scripts/Activate)) in all of them:
+
+1. **Terminal 1 (Start FastAPI)**:
+   ```powershell
+   uvicorn app.main:app --reload
+   ```
+2. **Terminal 2 (Start Celery Worker)**:
+   ```powershell
+   celery -A app.worker.celery_app worker -l INFO -P eventlet
+   ```
+3. **Terminal 3 (Start Celery Beat Scheduler)**:
+   ```powershell
+   celery -A app.worker.celery_app beat -l INFO
+   ```
+
+You can then test your APIs at `http://localhost:8000/docs` (Swagger UI).

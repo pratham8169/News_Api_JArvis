@@ -153,7 +153,7 @@ Make sure the following are installed and running on your machine before setup:
 ### Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/your-username/News_Api_JArvis.git
+git clone https://github.com/pratham8169/News_Api_JArvis.git
 cd News_Api_JArvis
 ```
 
@@ -362,3 +362,4 @@ All 3 services use a shared `setup_logger()` factory that outputs timestamped, l
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
